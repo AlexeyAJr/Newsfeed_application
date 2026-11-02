@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My feed</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233a86ff'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h10' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --text: #1b1f27; --muted: #6a7280; --line: #e3e6eb;
+  --accent: #3a86ff; --accent-soft: #e8f0ff; --warn: #b45309; --star: #f5a524; --mark: #fff3a3;
+  --shadow: 0 1px 2px rgba(20,25,40,.06), 0 2px 8px rgba(20,25,40,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --card: #1b1f27; --text: #e8eaef; --muted: #98a1b0; --line: #2a303b;
+    --accent: #6ea4ff; --accent-soft: #1f2d49; --warn: #f0b062; --star: #ffc14d; --mark: #6b5a00;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 16px; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+.layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); max-width: 1240px; margin: 0 auto; align-items: start; }
+.side { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 16px 18px 24px; border-right: 1px solid var(--line); }
+.content { min-width: 0; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 0 12px; }
+.top h1 { font-size: 22px; margin: 0; flex: 1 1 100%; letter-spacing: -.01em; }
+.top .tabs { flex: 1 1 100%; }
+.top .tabs button { flex: 1; }
+.top .icon-btn { flex: 1; justify-content: center; }
+.tabs { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.tabs button { border: 0; background: none; padding: 5px 12px; border-radius: 7px; color: var(--muted); font-size: 14px; }
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.icon-btn { border: 1px solid var(--line); background: var(--card); border-radius: 10px; height: 34px; padding: 0 12px;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.icon-btn:hover { border-color: var(--accent); }
+.icon-btn svg { width: 16px; height: 16px; }
+.spin svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding-bottom: 8px; }
+.filters > *, .dates > * { min-width: 0; }
+.search { position: relative; }
+.search input { width: 100%; height: 40px; border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+  padding: 0 70px 0 38px; outline: none; }
+.search input:focus, .dates input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search svg { position: absolute; left: 11px; top: 11px; width: 18px; height: 18px; color: var(--muted); }
+.search kbd { position: absolute; right: 10px; top: 9px; font: 12px ui-monospace, monospace; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+.search .clear { position: absolute; right: 6px; top: 6px; border: 0; background: none; color: var(--muted);
+  font-size: 22px; line-height: 1; padding: 2px 8px; display: none; }
+.search.has-text .clear { display: block; }
+.search.has-text kbd { display: none; }
+.dates { display: flex; gap: 6px; align-items: center; }
+.dates input { height: 40px; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 0 8px; outline: none; flex: 1 1 0; width: 0; min-width: 0; }
+.dates span { color: var(--muted); }
+.row2 { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 10px; align-items: center; }
+.chips { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
+.chips .chip { width: 100%; border-radius: 10px; padding: 7px 12px; font-size: 14px; }
+.chips .chip .n { margin-left: auto; }
+.presets { display: flex; flex-wrap: wrap; gap: 4px; }
+.presets button, .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 11px; font-size: 13px; color: var(--muted); }
+.presets button:hover, .chip:hover { border-color: var(--accent); }
+.chip { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.chip .n { color: var(--muted); font-size: 12px; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.chip.all { font-weight: 600; }
+.notice { display: none; margin: 10px 0 0; background: #fff7e6; border: 1px solid #f0c36d; color: #7a4a00; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+@media (prefers-color-scheme: dark) { .notice { background: #3a2f12; border-color: #7a6020; color: #f0d9a0; } }
+.notice.show { display: block; }
+.focus { display: none; align-items: center; gap: 8px; margin: 12px 2px 0; font-size: 14px; }
+.focus.show { display: flex; }
+.focus b { display: inline-flex; align-items: center; gap: 6px; }
+.focus .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.meta .src { cursor: pointer; background: none; border: 0; padding: 0; font-size: 13px; }
+.meta .src:hover { color: var(--accent); }
+.edl { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+.edl input, .edrow input { width: 100%; height: 38px; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 0 10px; outline: none; min-width: 0; box-sizing: border-box; }
+.edl input:focus, .edrow input:focus { border-color: var(--accent); }
+.edrow { display: grid; grid-template-columns: 1fr 150px auto; gap: 6px; margin-bottom: 6px; }
+.edrow .x { border: 1px solid var(--line); background: none; border-radius: 8px; color: var(--muted); padding: 0 10px; }
+.edact { display: flex; gap: 8px; margin-top: 10px; }
+@media (max-width: 560px) { .edrow { grid-template-columns: 1fr auto; } .edrow .lb { grid-column: 1 / -1; } }
+.addmsg { font-size: 13px; margin: 2px 0 6px; min-height: 18px; color: var(--muted); overflow-wrap: anywhere; }
+.addmsg.err { color: var(--warn); }
+.hint { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+.srow .rm { border: 1px solid var(--line); background: none; border-radius: 8px; padding: 1px 9px; font-size: 13px; color: var(--muted); }
+.srow .rm:hover { border-color: var(--warn); color: var(--warn); }
+.srow .go { background: none; border: 0; padding: 0; font-weight: 600; text-align: left; }
+.srow .go:hover { color: var(--accent); }
+.chip .warn { color: var(--warn); }
+
+.banner { display: none; margin: 12px 0 0; background: var(--accent-soft); border: 1px solid var(--accent); color: var(--accent);
+  border-radius: 10px; padding: 8px 12px; text-align: center; font-size: 14px; cursor: pointer; }
+.banner.show { display: block; }
+
+main { padding: 6px 0 60px; }
+.summary { color: var(--muted); font-size: 13px; margin: 12px 2px 4px; display: flex; justify-content: space-between; gap: 8px; }
+.day { margin: 22px 2px 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+  margin-bottom: 12px; transition: opacity .25s, transform .25s; }
+.card.gone { opacity: 0; transform: scale(.98); }
+.card .media { padding: 14px 16px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.card .media .one { max-width: 100%; }
+.card .media.collage { display: grid; gap: 4px; width: min(100%, 560px); box-sizing: content-box; max-width: calc(100% - 32px); grid-template-columns: repeat(var(--k, 2), 1fr); }
+.collage .tile { position: relative; overflow: hidden; border-radius: 8px; background: var(--line); cursor: zoom-in; aspect-ratio: 4 / 3; min-width: 0; }
+.collage .tile.big { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
+.collage .tile img, .collage .tile canvas, .collage .tile video { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0; max-width: none; max-height: none; }
+.collage .tile .badge { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.65); color: #fff; font: 600 11px/1 system-ui, sans-serif; padding: 5px 8px; border-radius: 999px; pointer-events: none; }
+.collage .tile .more { position: absolute; inset: 0; background: rgba(0,0,0,.55); color: #fff; font: 600 26px/1 system-ui, sans-serif; display: flex; align-items: center; justify-content: center; }
+.collage .tile .zoom { position: absolute; right: 8px; top: 8px; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: 6px; font-size: 14px; padding: 3px 7px; cursor: pointer; }
+.card .media.single .pic { cursor: zoom-in; }
+#lb { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.88); display: none; align-items: center; justify-content: center; }
+#lb.show { display: flex; }
+#lb .stage { max-width: 94vw; max-height: 90vh; display: flex; }
+#lb .stage img, #lb .stage video { max-width: 94vw; max-height: 90vh; object-fit: contain; border-radius: 6px; }
+#lb button { position: absolute; background: rgba(255,255,255,.15); color: #fff; border: 0; font-size: 28px; width: 46px; height: 46px; border-radius: 50%; cursor: pointer; }
+#lb .x { top: 14px; right: 14px; } #lb .pv { left: 14px; top: 50%; } #lb .nx { right: 14px; top: 50%; }
+#lb .cnt { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: #ddd; font: 13px system-ui, sans-serif; }
+.card .media.single video.pic { width: min(100%, 540px); max-height: 420px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; }
+.card .pic { display: block; width: auto; height: auto; max-width: min(100%, 540px); max-height: 400px; border-radius: 10px; background: var(--line); }
+.gifwrap { position: relative; display: inline-block; max-width: 100%; cursor: pointer; line-height: 0; }
+.gifwrap .badge { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.65); color: #fff; font: 600 12px/1 system-ui, sans-serif;
+  padding: 6px 9px; border-radius: 999px; letter-spacing: .04em; pointer-events: none; }
+.picfail { padding: 6px 16px; font-size: 12px; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--line); }
+.card .body { padding: 14px 16px 12px; }
+.meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.meta .src { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text); }
+.meta .src i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }
+.card h2 { font-size: 18px; line-height: 1.3; margin: 0 0 6px; letter-spacing: -.005em; overflow-wrap: anywhere; }
+.card h2 a { color: inherit; text-decoration: none; }
+.card h2 a:hover { color: var(--accent); }
+.txt { white-space: pre-line; color: var(--text); opacity: .88; overflow-wrap: anywhere; font-size: 15px;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.txt.open { display: block; -webkit-line-clamp: unset; }
+.txt a { color: var(--accent); }
+.links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 8px 0 2px; font-size: 14px; }
+.links a { color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.links a:hover { text-decoration: underline; }
+mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+.more { border: 0; background: none; color: var(--accent); padding: 4px 0 0; font-size: 14px; display: none; }
+.actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.actions a { font-size: 14px; color: var(--accent); text-decoration: none; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.actions a:hover { border-color: var(--accent); }
+.spacer { flex: 1; }
+.star { border: 1px solid var(--line); background: none; border-radius: 8px; width: 36px; height: 30px; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; }
+.star svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.star[aria-pressed="true"] { color: var(--star); border-color: var(--star); }
+.star[aria-pressed="true"] svg { fill: currentColor; }
+.star:hover { border-color: var(--star); }
+
+.empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+.empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+.loadmore { display: block; margin: 8px auto 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 9px 22px; }
+.loadmore:hover { border-color: var(--accent); }
+.tail { text-align: center; color: var(--muted); font-size: 14px; padding: 18px 0 8px; }
+dialog.dlg { border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text);
+  width: min(680px, calc(100vw - 24px)); max-height: 86vh; padding: 14px 18px 18px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+dialog.dlg::backdrop { background: rgba(0,0,0,.5); }
+.dlg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.dlg-head h2 { flex: 1; margin: 0; font-size: 18px; }
+.chip.plus { border-style: dashed; color: var(--accent); }
+details.status { margin: 14px 0 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: 14px; }
+details.status summary { cursor: pointer; color: var(--muted); }
+.srow { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 7px 0; border-top: 1px solid var(--line); }
+.srow:first-of-type { margin-top: 8px; }
+.srow .nm { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.srow .nm i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.srow .ms { grid-column: 1 / -1; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.srow.bad .ms { color: var(--warn); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .chips { flex-direction: row; flex-wrap: wrap; }
+  .chips .chip { width: auto; border-radius: 999px; }
+  .chips .chip .n { margin-left: 0; }
+  .wrap { padding: 0 14px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="side">
+  <div>
+    <div class="top">
+      <h1>My feed</h1>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-all" aria-selected="true">All</button>
+        <button role="tab" id="tab-marks" aria-selected="false">Bookmarks <span id="marks-n"></span></button>
+      </div>
+      <button class="icon-btn" id="src-btn" type="button" title="Add or remove sources">Sources</button>
+      <button class="icon-btn" id="refresh" title="Refresh sources">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+        <span id="refresh-label">Refresh</span>
+      </button>
+    </div>
+    <div class="filters">
+      <div class="search" id="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Words or &quot;a phrase in quotes&quot;" autocomplete="off" aria-label="Search">
+        <kbd>/</kbd>
+        <button class="clear" id="q-clear" title="Clear" aria-label="Clear search">×</button>
+      </div>
+      <div class="dates">
+        <input type="date" id="from" aria-label="From date">
+        <span>—</span>
+        <input type="date" id="to" aria-label="To date">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="presets">
+        <button data-p="today">Today</button>
+        <button data-p="yesterday">Yesterday</button>
+        <button data-p="week">7 days</button>
+        <button data-p="all">All time</button>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</aside>
+
+<div class="content"><div class="wrap">
+  <div class="banner" id="banner">Feed updated — show new</div>
+  <div class="notice" id="notice"></div>
+  <div class="focus" id="focus"><button class="icon-btn" id="show-all" type="button">← All sources</button><span>Showing news only from: <b id="focus-names"></b></span></div>
+  <main>
+    <div class="summary"><span id="summary"></span><span id="updated"></span></div>
+    <div id="list"></div>
+    <button class="loadmore" id="more" hidden>Show more</button>
+    <div class="tail" id="tail" hidden></div>
+    <dialog class="dlg" id="status">
+      <div class="dlg-head"><h2>Sources</h2><button class="icon-btn" id="dlg-close" type="button">Close</button></div>
+      <div style="margin:10px 0 4px"><button class="icon-btn" id="add-open" type="button">＋ Add source</button></div>
+      <div style="margin-top:8px"><button class="icon-btn" id="bf-toggle" type="button"></button>
+        <span style="color:var(--muted);font-size:13px"> background loading of older news</span></div>
+      <div id="srows"></div>
+    </dialog>
+    <dialog class="dlg" id="editor">
+      <form id="edform" method="dialog">
+        <div class="dlg-head"><h2 id="ed-title">New source</h2><button class="icon-btn" id="ed-close" type="button">Close</button></div>
+        <p class="hint">Name is how the source is listed on the left. Link: a website, RSS feed, OK/VK group or Telegram channel (the type is detected automatically). Several links can be given for Telegram channels — they appear as one source on the left and with separate labels in the feed.</p>
+        <label class="edl">Source name<input id="ed-name" type="text" placeholder="E.g. Rozetked" autocomplete="off"></label>
+        <div class="edl">Links <span class="hint">(feed label — optional)</span></div>
+        <div id="ed-links"></div>
+        <button class="icon-btn" id="ed-more" type="button">＋ another link</button>
+        <div class="addmsg" id="ed-msg"></div>
+        <div class="edact"><button class="icon-btn" id="ed-save" type="submit">Save</button><button class="icon-btn" id="ed-cancel" type="button">Cancel</button></div>
+      </form>
+    </dialog>
+  </main>
+</div></div>
+</div>
+
+<script>
+const PAGE = 30, FIRST_PAGE = 20;   // the first batch is smaller so the feed appears sooner
+const st = { bottom: 0, q: '', from: '', to: '', sources: new Set(), marks: false, offset: 0, total: 0, loading: false, lastDay: null, req: 0 };
+let untilAsked = '', noticeTimer = null;
+let SRC = {}, refreshing = false, BF_ON = true, seenNewest = 0;
+/* "Feed updated": the button appears only when the selected sources have an item newer than those already shown */
+function newestNow() {
+  const l = Object.values(SRC).filter(s => !st.sources.size || st.sources.has(s.id));
+  return Math.max(0, ...l.map(s => s.newest || 0));
+}
+function maybeBanner() { if (!st.marks && !st.q.trim() && newestNow() > seenNewest) $('#banner').classList.add('show'); }
+const $ = s => document.querySelector(s);
+const tz = new Date().getTimezoneOffset();
+
+const STAR = '<svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+
+/* ---------- helpers ---------- */
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function dayLabel(ts) {
+  const d = new Date(ts * 1000), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+  if (ymd(d) === ymd(t)) return 'Today';
+  if (ymd(d) === ymd(y)) return 'Yesterday';
+  const o = { weekday: 'long', day: 'numeric', month: 'long' };
+  if (d.getFullYear() !== t.getFullYear()) o.year = 'numeric';
+  return d.toLocaleDateString('en-GB', o);
+}
+const timeStr = ts => new Date(ts * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+/* today: time only ("09:27"); earlier: date and time ("17 October, 09:27"; the year is added if it is not the current one) */
+function whenStr(ts) {
+  const d = new Date(ts * 1000), t = new Date();
+  if (ymd(d) === ymd(t)) return timeStr(ts);
+  const o = { day: 'numeric', month: 'long' };
+  if (d.getFullYear() !== t.getFullYear()) o.year = 'numeric';
+  return `${d.toLocaleDateString('en-GB', o)}, ${timeStr(ts)}`;
+}
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+/* parse the query the same way as the server: words and "phrases" */
+function terms(q) {
+  const out = []; const re = /"([^"]+)"|(\S+)/g; let m;
+  while ((m = re.exec(q))) { const t = (m[1] || m[2]).trim(); if (t) out.push(t); }
+  return out;
+}
+function hlRegex(q) {
+  const ts = terms(q); if (!ts.length) return null;
+  const parts = ts.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[её]/gi, '[её]'));
+  return new RegExp('(' + parts.join('|') + ')', 'giu');
+}
+/* safe rendering: text -> links + highlighting, via DOM nodes only */
+function rich(text, q) {
+  const frag = document.createDocumentFragment(), re = hlRegex(q);
+  const addPlain = s => {
+    if (!re) { frag.append(s); return; }
+    s.split(re).forEach((p, i) => { if (!p) return; if (i % 2) { const m = el('mark'); m.textContent = p; frag.append(m); } else frag.append(p); });
+  };
+  text.split(/(https?:\/\/[^\s<>"')\]]+)/g).forEach((p, i) => {
+    if (i % 2) { const a = el('a'); a.href = p; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = p.length > 60 ? p.slice(0, 57) + '…' : p; frag.append(a); }
+    else addPlain(p);
+  });
+  return frag;
+}
+
+/* ---------- API ---------- */
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) { let m = r.statusText; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+  return r.json();
+}
+function params(offset) {
+  const p = new URLSearchParams({ limit: offset ? PAGE : FIRST_PAGE, offset, tz });
+  if (st.q.trim()) p.set('q', st.q.trim());
+  if (st.from) p.set('from', st.from);
+  if (st.to) p.set('to', st.to);
+  if (st.sources.size) p.set('sources', [...st.sources].join(','));
+  if (st.marks) p.set('bookmarked', '1');
+  return p;
+}
+
+/* ---------- cards ---------- */
+/* image / gif / video. A gif is shown still (first frame) and plays on click; video does not autoplay */
+function mediaEl(it) {
+  const list = ((it.media && it.media.length) ? it.media : [{ u: it.image, t: 'image' }]).filter(m => m && m.u);
+  if (list.length <= 1) { const wrap = el('div', 'media single'); if (list[0]) wrap.append(mediaOne(list[0], list)); return wrap; }
+  const MAXV = 4, shown = list.slice(0, MAXV), rest = list.length - shown.length;
+  const wrap = el('div', 'media collage');
+  wrap.style.setProperty('--k', list.length === 2 ? 2 : Math.min(shown.length - 1, 3));
+  shown.forEach((m, i) => {
+    const t = tile(m, list, i); if (list.length > 2 && i === 0) t.classList.add('big');
+    if (rest > 0 && i === shown.length - 1) t.append(el('div', 'more', '+' + rest));
+    wrap.append(t);
+  });
+  return wrap;
+}
+const isVid = m => m.t === 'video' || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(m.u);
+const isGifU = m => /\.gif(\?|#|$)/i.test(m.u);
+function tile(m, list, idx) {
+  const t = el('div', 'tile'); t.onclick = () => openLb(list, idx);
+  if (isVid(m)) {
+    const v = el('video'); v.preload = 'none'; v.muted = true; v.playsInline = true; v.autoplay = false; v.controls = false;
+    if (m.p) v.poster = '/img?u=' + encodeURIComponent(m.p);
+    v.src = m.u; v.referrerPolicy = 'no-referrer';
+    t.append(v, el('span', 'badge', '▶ video')); return t;
+  }
+  const img = el('img'); img.loading = 'lazy'; img.alt = '';
+  const proxied = '/img?u=' + encodeURIComponent(m.u);
+  img.onerror = () => {
+    if (!img.dataset.direct) { img.dataset.direct = '1'; img.referrerPolicy = 'no-referrer'; img.src = m.u; return; }
+    t.replaceChildren(el('div', 'picfail', 'Image failed to load'));
+  };
+  if (isGifU(m)) {
+    img.onload = () => {   // first frame without animation; it plays in the viewer
+      try { const cv = el('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight; cv.getContext('2d').drawImage(img, 0, 0); img.replaceWith(cv); } catch (e) {}
+    };
+    t.append(el('span', 'badge', '▶ GIF'));
+  }
+  img.src = proxied; t.prepend(img); return t;
+}
+/* full-size viewer */
+let LB = null;
+function openLb(list, idx) {
+  if (!LB) {
+    LB = el('div'); LB.id = 'lb';
+    LB.innerHTML = '<div class="stage"></div><button class="x" title="Close">×</button><button class="pv" title="Previous">‹</button><button class="nx" title="Next">›</button><div class="cnt"></div>';
+    document.body.append(LB);
+    LB.onclick = e => { if (e.target === LB) closeLb(); };
+    LB.querySelector('.x').onclick = closeLb;
+    LB.querySelector('.pv').onclick = () => lbGo(-1);
+    LB.querySelector('.nx').onclick = () => lbGo(1);
+    document.addEventListener('keydown', e => {
+      if (!LB.classList.contains('show')) return;
+      if (e.key === 'Escape') closeLb(); else if (e.key === 'ArrowLeft') lbGo(-1); else if (e.key === 'ArrowRight') lbGo(1);
+    });
+  }
+  LB._list = list; LB._i = idx; LB.classList.add('show'); lbDraw();
+}
+function closeLb() { LB.classList.remove('show'); LB.querySelector('.stage').replaceChildren(); }
+function lbGo(d) { const n = LB._list.length; LB._i = (LB._i + d + n) % n; lbDraw(); }
+function lbDraw() {
+  const m = LB._list[LB._i], st = LB.querySelector('.stage'); let node;
+  if (isVid(m)) { node = el('video'); node.controls = true; node.src = m.u; node.referrerPolicy = 'no-referrer'; if (m.p) node.poster = '/img?u=' + encodeURIComponent(m.p); }
+  else {
+    node = el('img'); node.src = '/img?u=' + encodeURIComponent(m.u);
+    node.onerror = () => { if (!node.dataset.d) { node.dataset.d = '1'; node.referrerPolicy = 'no-referrer'; node.src = m.u; } };
+  }
+  st.replaceChildren(node);
+  const n = LB._list.length; LB.querySelector('.cnt').textContent = n > 1 ? (LB._i + 1) + ' / ' + n : '';
+  LB.querySelector('.pv').style.display = LB.querySelector('.nx').style.display = n > 1 ? '' : 'none';
+}
+function mediaOne(m, list) {
+  const wrap = el('div', 'one');
+  const url = m.u, isVideo = m.t === 'video' || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url), isGif = /\.gif(\?|#|$)/i.test(url);
+  if (isVideo) {
+    const v = el('video', 'pic'); v.controls = true; v.preload = 'none'; v.muted = true; v.playsInline = true; v.autoplay = false;
+    if (m.p) v.poster = '/img?u=' + encodeURIComponent(m.p);
+    v.src = url; v.referrerPolicy = 'no-referrer';
+    wrap.append(v); return wrap;
+  }
+  const img = el('img', 'pic'); img.loading = 'lazy'; img.alt = '';
+  const proxied = '/img?u=' + encodeURIComponent(url);   // through our server: correct Referer + cache
+  let gifOn = false;
+  img.onerror = async () => {
+    if (!img.dataset.direct) {   // the server could not download it (site protection) — try directly from the browser, without Referer
+      img.dataset.direct = '1'; img.referrerPolicy = 'no-referrer'; img.src = url; return;
+    }
+    let why = ''; try { why = await (await fetch(proxied)).text(); } catch (e) { why = e.message; }
+    const f = el('div', 'picfail', 'Image failed to load'); f.title = why.slice(0, 300) + '\n' + url; wrap.replaceChildren(f);
+  };
+  const grow = (node, w, h) => {   // a small image is enlarged to a readable size (proportions are kept)
+    w = w || img.naturalWidth; h = h || img.naturalHeight; if (!w || !h) return;
+    const k = Math.min(3, 540 / w, 380 / h); if (k > 1.05) { (node || img).style.width = Math.round(w * k) + 'px'; (node || img).style.height = 'auto'; }
+  };
+  if (!isGif) { img.onload = () => grow(); img.onclick = () => openLb(list || [m], 0); img.src = proxied; wrap.append(img); return wrap; }
+  // gif: draw the first frame on a canvas, start the animation on click
+  const box = el('div', 'gifwrap'), badge = el('span', 'badge', '▶ GIF'), cv = el('canvas', 'pic');
+  box.title = 'Click to play';
+  const still = () => {
+    try {
+      cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+      cv.getContext('2d').drawImage(img, 0, 0);
+      img.remove(); box.prepend(cv); badge.hidden = false; grow(cv, cv.width, cv.height);
+    } catch (e) { /* could not draw it — leave as is */ }
+  };
+  img.onload = () => { if (!gifOn) still(); };
+  box.onclick = () => {
+    gifOn = !gifOn;
+    if (gifOn) { cv.replaceWith(img); img.src = img.dataset.direct ? url : proxied; badge.hidden = true; }
+    else { still(); }
+  };
+  img.src = proxied;
+  box.append(img, badge); wrap.append(box); return wrap;
+}
+function card(it) {
+  const s = { name: it.source_name || (SRC[it.source] || {}).name || it.source, color: it.source_color || (SRC[it.source] || {}).color || '#888' };
+  const c = el('article', 'card'); c.dataset.id = it.id;
+  if (it.image || (it.media && it.media.length)) c.append(mediaEl(it));
+  const b = el('div', 'body');
+  const meta = el('div', 'meta');
+  const src = el('button', 'src'); src.type = 'button'; src.title = 'Show only this source'; const dot = el('i'); dot.style.setProperty('--c', s.color); src.append(dot, s.name);
+  src.onclick = () => { window.scrollTo({ top: 0 }); selectSource(it.source, false); };
+  const when = el('span', null, whenStr(it.published));
+  when.title = new Date(it.published * 1000).toLocaleString('en-GB');
+  meta.append(src, when);
+  const h = el('h2');
+  if (it.url) { const a = el('a'); a.href = it.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.append(rich(it.title, st.q)); h.append(a); }
+  else h.append(rich(it.title, st.q));
+  b.append(meta, h);
+  let more;
+  if (it.text) {
+    const t = el('div', 'txt'); t.append(rich(it.text, st.q)); more = el('button', 'more', 'Show full text');
+    more.onclick = () => { const o = t.classList.toggle('open'); more.textContent = o ? 'Collapse' : 'Show full text'; };
+    b.append(t, more); c._t = t; c._more = more;
+  }
+  if (it.links && it.links.length) {   // hyperlinks from the post text
+    const ln = el('div', 'links');
+    for (const l of it.links) { const a = el('a', null, '🔗 ' + l.t); a.href = l.u; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = l.u; ln.append(a); }
+    b.append(ln);
+  }
+  const act = el('div', 'actions');
+  if (it.url) { const a = el('a', null, it.ext_url ? 'Post' : 'Open'); a.href = it.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; act.append(a); }
+  if (it.ext_url) { const a = el('a', null, 'Article'); a.href = it.ext_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; act.append(a); }
+  act.append(el('span', 'spacer'));
+  const star = el('button', 'star'); star.innerHTML = STAR; star.setAttribute('aria-pressed', it.bookmarked);
+  star.title = it.bookmarked ? 'Remove bookmark' : 'Bookmark'; star.setAttribute('aria-label', star.title);
+  star.onclick = () => toggleMark(it, star, c);
+  act.append(star); b.append(act); c.append(b);
+  return c;
+}
+function afterInsert(c) { if (c._t && c._t.scrollHeight > c._t.clientHeight + 2) c._more.style.display = 'block'; }
+
+async function toggleMark(it, btn, c) {
+  const want = !it.bookmarked;
+  it.bookmarked = want; btn.setAttribute('aria-pressed', want); btn.title = want ? 'Remove bookmark' : 'Bookmark';
+  bumpMarks(want ? 1 : -1);
+  try {
+    await api('/api/bookmarks/' + encodeURIComponent(it.id), { method: want ? 'POST' : 'DELETE' });
+    if (!want && st.marks) {
+      c.classList.add('gone'); st.total--; st.offset--;
+      setTimeout(() => {
+        c.remove();
+        document.querySelectorAll('#list .day').forEach(d => { if (!d.nextElementSibling || d.nextElementSibling.classList.contains('day')) d.remove(); });
+        renderSummary();
+        if (!$('#list .card')) showEmpty();
+      }, 250);
+    }
+  } catch (e) {
+    it.bookmarked = !want; btn.setAttribute('aria-pressed', !want); bumpMarks(want ? -1 : 1);
+    alert('Could not change the bookmark: ' + e.message);
+  }
+}
+let marksN = 0;
+function bumpMarks(d) { setMarks(marksN + d); }
+function setMarks(n) { marksN = Math.max(0, n); $('#marks-n').textContent = marksN ? `(${marksN})` : ''; }
+
+/* ---------- loading the feed ---------- */
+function showEmpty() {
+  const l = $('#list'); l.replaceChildren();
+  const e = el('div', 'empty'); const anyFilter = st.q || st.from || st.to || st.sources.size;
+  if (st.marks && !anyFilter) { e.append(el('b', null, 'No bookmarks yet'), 'Press ★ on an item to save it here.'); }
+  else if (anyFilter) { e.append(el('b', null, 'Nothing found'), $('#notice').classList.contains('show') ? 'The source archive is still loading — check back later.' : 'Try other words or widen the date range.'); }
+  else if (refreshing) { e.append(el('b', null, 'Loading news…'), 'This takes up to a minute on the first run.'); }
+  else { e.append(el('b', null, 'Nothing here yet'), 'Press "Refresh" and check the "Sources" dialog for errors.'); }
+  l.append(e);
+}
+function renderSummary() {
+  const shown = $('#list').querySelectorAll('.card').length;
+  $('#summary').textContent = st.total ? `Found: ${st.total}` + (shown < st.total ? ` · showing ${shown}` : '') : '';
+  $('#more').hidden = shown >= st.total;
+  updateTail();
+}
+function appendItems(list, items) {
+  const cards = [];
+  for (const it of items) {
+    const d = dayLabel(it.published);
+    if (d !== st.lastDay) { list.append(el('div', 'day', d)); st.lastDay = d; }
+    const c = card(it); list.append(c); cards.push(c);
+    st.bottom = it.published;
+  }
+  cards.forEach(afterInsert);
+}
+/* redraw what is already shown + one more batch (after the archive loads, new records may land in the middle of the feed) */
+async function reloadKeep() {
+  if (st.loading) return;
+  const want = Math.min($('#list').querySelectorAll('.card').length + PAGE, 1000);
+  const y = window.scrollY, my = ++st.req; st.loading = true;
+  try {
+    let items = [], total = 0;
+    while (items.length < want) {
+      const p = params(items.length); p.set('limit', Math.min(100, want - items.length));
+      const res = await api('/api/items?' + p); total = res.total;
+      if (!res.items.length) break;
+      items = items.concat(res.items);
+      if (items.length >= total) break;
+    }
+    if (my !== st.req) return;
+    const list = $('#list'); list.replaceChildren(); st.lastDay = null;
+    appendItems(list, items);
+    st.offset = items.length; st.total = total; renderSummary(); window.scrollTo(0, y);
+  } catch (e) { /* retry on the next tick */ } finally { if (my === st.req) st.loading = false; }
+}
+
+/* ---------- end of feed: if the archive is still loading, we ask and wait; the feed fills in by itself ---------- */
+let tailTimer = null, tailAsked = '';
+function pendingArchive() {
+  const chosen = st.sources.size ? Object.values(SRC).filter(s => st.sources.has(s.id)) : Object.values(SRC);
+  return chosen.filter(s => s.archive && s.archive.supported && !s.archive.done && !s.archive.error);
+}
+function updateTail() {
+  const t = $('#tail'), shown = $('#list').querySelectorAll('.card').length;
+  const atEnd = shown > 0 && shown >= st.total && !st.marks && !st.q.trim() && !st.to;
+  if (!atEnd) { t.hidden = true; stopTail(); return; }
+  const pend = pendingArchive();
+  t.hidden = false;
+  if (!pend.length) { t.textContent = 'These are all the news that could be loaded.'; stopTail(); return; }
+  t.textContent = `Loading older news: ${pend.map(s => s.name).join(', ')}…`;
+  const day = new Date((st.bottom - 86400) * 1000), pad = n => String(n).padStart(2, '0');
+  const until = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+  if (tailAsked !== until + '|' + shown) {
+    tailAsked = until + '|' + shown;
+    api(`/api/backfill?until=${until}&tz=${tz}`, { method: 'POST' }).catch(() => {});
+  }
+  if (!tailTimer) tailTimer = setInterval(async () => {
+    try {
+      const info = await api('/api/sources'); renderSources(info);
+      const p = params(0); p.set('limit', 1);
+      const res = await api('/api/items?' + p);
+      if (res.total > st.total) { await reloadKeep(); }
+      else updateTail();
+    } catch (e) {}
+  }, 5000);
+}
+function stopTail() { if (tailTimer) { clearInterval(tailTimer); tailTimer = null; } }
+async function load(reset) {
+  if (st.loading && !reset) return;
+  const my = ++st.req; st.loading = true;
+  if (reset) { st.offset = 0; st.lastDay = null; }
+  try {
+    const res = await api('/api/items?' + params(st.offset));
+    if (my !== st.req) return;
+    const list = $('#list');
+    if (reset) list.replaceChildren();
+    st.total = res.total;
+    if (reset) {   // everything newer than this counts as "new" for the button
+      seenNewest = Math.max(newestNow(), !st.q.trim() && !st.from && !st.to && !st.marks && !st.sources.size && res.items.length ? res.items[0].published : 0);
+      $('#banner').classList.remove('show');
+    }
+    if (reset && !res.items.length) { showEmpty(); renderSummary(); return; }
+    appendItems(list, res.items);
+    st.offset += res.items.length; renderSummary();
+  } catch (e) {
+    if (my === st.req) { $('#list').replaceChildren(el('div', 'empty', 'Error: ' + e.message)); }
+  } finally { if (my === st.req) st.loading = false; }
+}
+
+/* ---------- sources and status ---------- */
+function renderSources(info) {
+  SRC = Object.fromEntries(info.sources.map(s => [s.id, s]));
+  setMarks(info.bookmarks); refreshing = info.refreshing;
+  for (const id of [...st.sources]) if (!SRC[id]) st.sources.delete(id);
+  const chips = $('#chips'); chips.replaceChildren();
+  const all = el('button', 'chip all', 'All sources'); all.setAttribute('aria-pressed', st.sources.size === 0);
+  all.onclick = () => { if (st.sources.size) { st.sources.clear(); sync(true); } };
+  chips.append(all);
+  const plus = el('button', 'chip plus', '＋ Source'); plus.type = 'button'; plus.id = 'plus-chip'; plus.onclick = () => openEditor(null); plus.dataset.keep = '1';
+  for (const s of info.sources) {
+    const b = el('button', 'chip'); b.setAttribute('aria-pressed', st.sources.has(s.id));
+    const d = el('span', 'dot'); d.style.setProperty('--c', s.color);
+    b.append(d, s.name, el('span', 'n', s.count));
+    if (s.ok === false) { const w = el('span', 'warn', '⚠'); w.title = s.message; b.append(w); }
+    b.title = 'Only this source (Shift/Ctrl — add to the selection)';
+    b.onclick = e => selectSource(s.id, e.shiftKey || e.ctrlKey || e.metaKey);
+    chips.append(b);
+  }
+  chips.append(plus);
+  const rows = $('#srows'); rows.replaceChildren();
+  for (const s of info.sources) {
+    const r = el('div', 'srow' + (s.ok === false ? ' bad' : ''));
+    const nm = el('div', 'nm'); const d = el('i'); d.style.setProperty('--c', s.color);
+    const go = el('button', 'go', s.name); go.type = 'button'; go.onclick = () => { window.scrollTo({ top: 0 }); selectSource(s.id, false); };
+    const ext = el('a', null, '↗'); ext.href = s.url; ext.target = '_blank'; ext.rel = 'noopener noreferrer'; ext.title = 'Open original'; ext.style.cssText = 'color:var(--muted);text-decoration:none';
+    nm.append(d, go, ext);
+    const right = el('div', null, `${s.count} items `);
+    const ed = el('button', 'rm', 'Edit'); ed.type = 'button'; ed.onclick = () => openEditor(s);
+    const rm = el('button', 'rm', 'Remove'); rm.type = 'button'; rm.onclick = () => removeSource(s);
+    right.append(ed, ' ', rm); r.append(nm, right);
+    const when = s.checked ? new Date(s.checked * 1000).toLocaleString('en-GB') : '';
+    r.append(el('div', 'ms', s.busy ? '⏳ refreshing… (up to 2–3 minutes on protected sites)' : s.ok === null ? 'not checked yet' : `${s.ok ? '✓' : '⚠'} ${s.message || ''}${when ? ' · ' + when : ''}`));
+    const ar = s.archive || {};
+    const arch = !ar.supported ? `archive: ${ar.message}` : ar.error ? `archive: error — ${ar.message}`
+      : ar.done ? `archive: fully loaded (+${ar.loaded})` : ar.lazy ? `archive: ${ar.message}` : `archive: loading… (+${ar.loaded})${ar.message ? ' · ' + ar.message : ''}`;
+    r.append(el('div', 'ms', `images: ${s.with_image} of ${s.count}${s.newest ? ' · latest item: ' + whenStr(s.newest) : ''} · ${arch}`));
+    rows.append(r);
+  }
+  BF_ON = info.backfill; $('#bf-toggle').textContent = BF_ON ? 'Stop background loading' : 'Start background loading';
+  const pending = info.backfill && info.sources.some(x => x.archive && x.archive.supported && !x.archive.done && !x.archive.error && !x.archive.lazy);
+  $('#updated').textContent = (pending ? 'archive loading · ' : '') + (info.last_refresh ? 'updated ' + new Date(info.last_refresh * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+  setRefreshUi(info.refreshing);
+  updateFocus(); updateNotice(info); updateTail();
+}
+function setRefreshUi(on) {
+  $('#refresh').classList.toggle('spin', on); $('#refresh').disabled = on;
+  $('#refresh-label').textContent = on ? 'Refreshing…' : 'Refresh';
+}
+async function loadSources() { const info = await api('/api/sources'); renderSources(info); return info; }
+
+/* ---------- source selection, URL and "Back" ---------- */
+function urlOf() {
+  const p = new URLSearchParams();
+  if (st.q.trim()) p.set('q', st.q.trim());
+  if (st.from) p.set('from', st.from);
+  if (st.to) p.set('to', st.to);
+  if (st.sources.size) p.set('src', [...st.sources].join(','));
+  if (st.marks) p.set('tab', 'marks');
+  const s = p.toString(); return location.pathname + (s ? '?' + s : '');
+}
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  st.q = p.get('q') || ''; st.from = p.get('from') || ''; st.to = p.get('to') || '';
+  st.sources = new Set((p.get('src') || '').split(',').filter(Boolean)); st.marks = p.get('tab') === 'marks';
+  $('#q').value = st.q; $('#from').value = st.from; $('#to').value = st.to;
+  $('#search-box').classList.toggle('has-text', !!st.q);
+  $('#tab-all').setAttribute('aria-selected', !st.marks); $('#tab-marks').setAttribute('aria-selected', st.marks);
+}
+let lastUrl = null;
+/* state -> address (browser history) -> redraw. replace=true: no new history entry (while typing) */
+function sync(reload, replace) {
+  const u = urlOf();
+  if (u !== lastUrl) { history[replace || lastUrl === null ? 'replaceState' : 'pushState'](null, '', u); lastUrl = u; }
+  paintChips(); updateFocus(); updateNotice();
+  if (reload) load(true);
+}
+function selectSource(id, multi) {
+  if (multi) { st.sources.has(id) ? st.sources.delete(id) : st.sources.add(id); }
+  else if (st.sources.size === 1 && st.sources.has(id)) { st.sources.clear(); }
+  else { st.sources = new Set([id]); }
+  sync(true);
+}
+function paintChips() {
+  document.querySelectorAll('#chips .chip').forEach((b, i) => {
+    if (i === 0) b.setAttribute('aria-pressed', st.sources.size === 0);
+  });
+  const ids = Object.keys(SRC);
+  document.querySelectorAll('#chips .chip:not(.all):not(.plus)').forEach((b, i) => b.setAttribute('aria-pressed', st.sources.has(ids[i])));
+}
+function updateFocus() {
+  const names = [...st.sources].map(id => (SRC[id] || {}).name || id);
+  $('#focus').classList.toggle('show', names.length > 0);
+  $('#focus-names').textContent = names.join(', ');
+}
+$('#show-all').onclick = () => { st.sources.clear(); sync(true); };
+window.addEventListener('popstate', () => { readUrl(); lastUrl = urlOf(); paintChips(); updateFocus(); updateNotice(); load(true); });
+
+/* ---------- no gaps: a warning and urgent archive loading up to the selected date ---------- */
+function updateNotice(info) {
+  const box = $('#notice');
+  const list = Object.values(SRC);
+  if (!st.from || !list.length) { box.classList.remove('show'); stopNoticeTimer(); return; }
+  const fromTs = new Date(st.from + 'T00:00:00').getTime() / 1000;
+  const chosen = st.sources.size ? list.filter(s => st.sources.has(s.id)) : list;
+  const gaps = chosen.filter(s => (s.oldest == null || s.oldest > fromTs) && !(s.archive && s.archive.done));
+  const none = gaps.filter(s => s.archive && s.archive.supported === false);
+  const bad = gaps.filter(s => s.archive && s.archive.supported !== false && s.archive.error);
+  const wait = gaps.filter(s => !(s.archive && (s.archive.error || s.archive.supported === false)));
+  if (!gaps.length) { const was = box.classList.contains('show'); box.classList.remove('show'); stopNoticeTimer(); if (was) load(true); return; }
+  const parts = [];
+  if (wait.length) parts.push(`The archive is still loading back to ${st.from.split('-').reverse().join('.')}: ${wait.map(s => s.name).join(', ')}. Showing what is already loaded — the feed will fill in by itself.`);
+  if (none.length) parts.push(`No older news: ${none.map(s => s.name).join(', ')} only serves the latest posts.`);
+  if (bad.length) parts.push(`Could not load further: ${bad.map(s => `${s.name} (${s.archive.message || 'error'})`).join(', ')}.`);
+  box.textContent = parts.join(' '); box.classList.add('show');
+  if (wait.length && untilAsked !== st.from) {
+    untilAsked = st.from;
+    api(`/api/backfill?until=${st.from}&tz=${tz}`, { method: 'POST' }).catch(() => {});
+  }
+  if (wait.length && !noticeTimer) noticeTimer = setInterval(async () => { try { renderSources(await api('/api/sources')); } catch (e) {} }, 8000);
+  if (!wait.length) stopNoticeTimer();
+}
+function stopNoticeTimer() { if (noticeTimer) { clearInterval(noticeTimer); noticeTimer = null; } }
+
+/* ---------- adding and removing sources ---------- */
+function openSources() { const d = $('#status'); if (!d.open) d.showModal(); }
+$('#src-btn').onclick = openSources;
+$('#dlg-close').onclick = () => $('#status').close();
+$('#status').addEventListener('click', e => { if (e.target === $('#status')) $('#status').close(); });
+/* source editor: a name + one or several links */
+let edId = null;
+function edRow(u = '', label = '') {
+  const r = el('div', 'edrow');
+  const iu = el('input'); iu.type = 'text'; iu.placeholder = 'Link (website, RSS, t.me/…, ok.ru/…)'; iu.value = u; iu.autocomplete = 'off'; iu.dataset.k = 'u';
+  const il = el('input', 'lb'); il.type = 'text'; il.placeholder = 'Feed label'; il.value = label; il.autocomplete = 'off'; il.dataset.k = 'label';
+  const x = el('button', 'x', '✕'); x.type = 'button'; x.title = 'Remove link'; x.onclick = () => { if ($('#ed-links').children.length > 1) r.remove(); else iu.value = il.value = ''; };
+  r.append(iu, il, x); $('#ed-links').append(r); return r;
+}
+function openEditor(src) {
+  edId = src ? src.id : null;
+  $('#ed-title').textContent = src ? `Source: ${src.name}` : 'New source';
+  $('#ed-name').value = src ? src.name : '';
+  $('#ed-links').replaceChildren();
+  for (const l of (src && src.links && src.links.length ? src.links : [{ u: '', label: '' }])) edRow(l.u, l.label);
+  const m = $('#ed-msg'); m.className = 'addmsg'; m.textContent = '';
+  if ($('#status').open) $('#status').close();
+  const d = $('#editor'); if (!d.open) d.showModal(); setTimeout(() => $('#ed-name').focus(), 50);
+}
+$('#add-open').onclick = () => openEditor(null);
+$('#ed-more').onclick = () => edRow().querySelector('input').focus();
+$('#ed-close').onclick = $('#ed-cancel').onclick = () => $('#editor').close();
+$('#editor').addEventListener('click', e => { if (e.target === $('#editor')) $('#editor').close(); });
+$('#edform').onsubmit = async e => {
+  e.preventDefault();
+  const links = [...$('#ed-links').children].map(r => ({ u: r.querySelector('[data-k=u]').value.trim(), label: r.querySelector('[data-k=label]').value.trim() })).filter(l => l.u);
+  const name = $('#ed-name').value.trim();
+  const msg = $('#ed-msg'), btn = $('#ed-save');
+  if (!links.length) { msg.className = 'addmsg err'; msg.textContent = 'Enter at least one link'; return; }
+  msg.className = 'addmsg'; msg.textContent = 'Checking links and loading news…'; btn.disabled = true;
+  try {
+    const r = await api(edId ? '/api/sources/' + encodeURIComponent(edId) : '/api/sources',
+      { method: edId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, links }) });
+    const s = r.source || {};
+    await loadSources(); load(true);
+    if (s.ok === false) { msg.className = 'addmsg err'; msg.textContent = `Saved, but the source returned an error: ${s.message || ''}`; }
+    else { $('#editor').close(); }
+  } catch (err) { msg.className = 'addmsg err'; msg.textContent = err.message; }
+  finally { btn.disabled = false; }
+};
+async function removeSource(s) {
+  if (!confirm(`Remove the source "${s.name}"? Its news will disappear from the feed, but bookmarks are kept; if you add the source again, everything comes back.`)) return;
+  try {
+    await api('/api/sources/' + encodeURIComponent(s.id), { method: 'DELETE' });
+    st.sources.delete(s.id); sync(false);
+    await loadSources(); load(true);
+  } catch (e) { alert('Could not remove: ' + e.message); }
+}
+
+async function doRefresh(force) {
+  setRefreshUi(true);
+  try { await api('/api/refresh' + (force === true ? '?force=1' : ''), { method: 'POST' }); } catch (e) { setRefreshUi(false); alert(e.message); return; }
+  for (let tick = 1; ; tick++) {
+    await new Promise(r => setTimeout(r, 1500));
+    const info = await loadSources();
+    // fast sources (Telegram, RSS) are ready at once — show them without waiting for the slow ones
+    if (info.refreshing && tick % 4 === 0 && window.scrollY < 300 && !st.loading) load(true);
+    if (!info.refreshing) { if (window.scrollY > 300) maybeBanner(); else { $('#banner').classList.remove('show'); load(true); } return; }
+  }
+}
+
+/* periodically check whether the server has refreshed the feed by itself */
+setInterval(async () => {
+  try {
+    const info = await api('/api/sources');
+    renderSources(info);
+    if (!info.refreshing) maybeBanner();
+  } catch (e) {}
+}, 30000);
+
+/* ---------- controls ---------- */
+let debounce;
+$('#q').addEventListener('input', e => {
+  st.q = e.target.value; $('#search-box').classList.toggle('has-text', !!st.q);
+  clearTimeout(debounce); debounce = setTimeout(() => sync(true, true), 300);
+});
+$('#q-clear').onclick = () => { $('#q').value = ''; st.q = ''; $('#search-box').classList.remove('has-text'); sync(true); $('#q').focus(); };
+for (const id of ['from', 'to']) $('#' + id).addEventListener('change', e => { st[id] = e.target.value; sync(true); });
+document.querySelectorAll('.presets button').forEach(b => b.onclick = () => {
+  const t = new Date(), y = new Date(); y.setDate(t.getDate() - 1); const w = new Date(); w.setDate(t.getDate() - 6);
+  const m = { today: [ymd(t), ymd(t)], yesterday: [ymd(y), ymd(y)], week: [ymd(w), ymd(t)], all: ['', ''] }[b.dataset.p];
+  [st.from, st.to] = m; $('#from').value = m[0]; $('#to').value = m[1]; sync(true);
+});
+function setTab(marks) {
+  st.marks = marks; $('#tab-all').setAttribute('aria-selected', !marks); $('#tab-marks').setAttribute('aria-selected', marks); sync(true);
+}
+$('#tab-all').onclick = () => setTab(false);
+$('#tab-marks').onclick = () => setTab(true);
+$('#refresh').onclick = () => doRefresh(true);
+$('#bf-toggle').onclick = async () => { await api('/api/backfill?on=' + (BF_ON ? 0 : 1), { method: 'POST' }); loadSources(); };
+$('#more').onclick = () => load(false);
+$('#banner').onclick = async () => { $('#banner').classList.remove('show'); try { await loadSources(); } catch (e) {} await load(true); window.scrollTo({ top: 0 }); };
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
+  if (e.key === 'Escape' && document.activeElement === $('#q')) $('#q').blur();
+});
+new IntersectionObserver(es => { if (es[0].isIntersecting && !$('#more').hidden) load(false); }, { rootMargin: '400px' }).observe($('#more'));
+
+(async () => {
+  readUrl(); lastUrl = urlOf(); history.replaceState(null, '', lastUrl);
+  const [info] = await Promise.all([loadSources(), load(true)]);   // sources and the first batch of the feed — in parallel
+  if (info.refreshing) {   // a refresh is running (e.g. first launch): wait and update the feed
+    for (;;) { await new Promise(r => setTimeout(r, 2000)); const i = await loadSources(); if (!i.refreshing) { load(true); break; } }
+  } else if (!info.last_refresh || Date.now() / 1000 - info.last_refresh > 60) {
+    doRefresh();   // F5 / page open: poll the sources right away; the feed is already shown from the DB
+  }
+})();
+</script>
+</body>
+</html>
